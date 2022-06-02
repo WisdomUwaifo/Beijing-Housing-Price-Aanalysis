@@ -1,0 +1,238 @@
+---
+title: "Final Project"
+author: "Wisdom Uwaifo"
+date: '2022-04-27'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# install.packages("tidyverse")
+# install.packages("dplyr")
+# install.packages("readr")
+# install.packages("expss")
+# install.packages("pastecs")
+# install.packages("haven")
+# install.packages("pollster") 
+# install.packages("survey")
+# install.packages("plm")
+# install.packages("ggthemes")
+# install.packages("flextable")
+# install.packages("data.table")
+# install.packages("modelsummary")
+# install.packages("readxl")
+```
+
+
+```{r}
+### Load some packages.
+library(tidyverse)
+library(dplyr)
+library(readr)
+library(expss)
+library(pastecs)
+library(haven)
+library(pollster)
+library(survey)
+library(plm)
+library(ggthemes)
+library(modelsummary)
+library(data.table)
+library(flextable)
+library(kableExtra)
+library(readxl)
+library(sos)
+library(car)
+```
+
+```{r}
+# Step 1: Set working Directory and Import Data
+library(readr)
+setwd("~/Desktop/Final Project ")
+Beijing_Housing_Price <- read_csv("new.csv")
+```
+
+```{r}
+# number of missing variables 
+library(VIM)
+colSums(is.na(Beijing_Housing_Price))
+aggr(Beijing_Housing_Price)
+```
+
+```{r}
+
+boxplot(Beijing_Housing_Price$price,
+  ylab = "Price per square"
+)
+
+summary(Beijing_Housing_Price$price)
+summary(Beijing_Housing_Price$totalPrice)
+```
+
+```{r}
+# Sanity Checks
+
+ ncol(Beijing_Housing_Price) #checking number of variables
+ 
+ nrow(Beijing_Housing_Price)#checking number of observations
+ 
+ head(Beijing_Housing_Price) #checking the top variables and rows
+ 
+ tail(Beijing_Housing_Price)  #checking the bottom variables and rows
+```
+ 
+```{r}
+ 
+ summary(Beijing_Housing_Price, basic= T) #summary statistics
+ 
+ options(scipen=100)   #Removing scientific notation for all output
+```
+
+```{r}
+#Create a sub-dataset #1
+# buildingType: including tower( 1 ) , bungalow( 2 )，combination of plate and tower( 3 ), plate( 4 )
+# renovationCondition: including other( 1 ), rough( 2 ),Simplicity( 3 ), hardcover( 4 )
+#buildingStructure: including unknow( 1 ), mixed( 2 ), brick and wood( 3 ), brick and concrete( 4 ),steel( 5 ) and steel-concrete composite ( 6 ).
+Categorical_Data <- select(Beijing_Housing_Price, id, price, totalPrice, buildingType, buildingStructure, renovationCondition)
+#Create s sub-dataset #2
+Dummy_Variables <- select(Beijing_Housing_Price, id, fiveYearsProperty, elevator, subway, kitchen)
+Regular_Data <- select(Beijing_Housing_Price, id, DOM, followers, square, livingRoom, drawingRoom, bathRoom)
+```
+
+
+```{r}
+# Merging Dataset by id.
+MyData <- merge(Categorical_Data, Dummy_Variables,  by = "id")
+Aanalysis_Beijing_Housing <- merge(MyData, Regular_Data, by = "id")
+```
+
+
+```{r}
+# Replace missing data with the mean
+Aanalysis_Beijing_Housing$id[is.na(Aanalysis_Beijing_Housing$id)] <- 0
+Aanalysis_Beijing_Housing$DOM[is.na(Aanalysis_Beijing_Housing$DOM)] <- mean(Aanalysis_Beijing_Housing$DOM)
+Aanalysis_Beijing_Housing$followers[is.na(Aanalysis_Beijing_Housing$followers)] <- mean(Aanalysis_Beijing_Housing$followers)
+Aanalysis_Beijing_Housing$square[is.na(Aanalysis_Beijing_Housing$square)] <- mean(Aanalysis_Beijing_Housing$square)
+Aanalysis_Beijing_Housing$livingRoom[is.na(Aanalysis_Beijing_Housing$livingRoom)] <- mean(Aanalysis_Beijing_Housing$livingRoom)
+```
+
+
+```{r}
+# Creating dummy variables 
+# If building type = combination of plate and tower (3) or plate (4) = 1 or if not = 0
+Aanalysis_Beijing_Housing$BuildingType_new <- ifelse(Aanalysis_Beijing_Housing$buildingType == 3 & 4, 1, 0)
+# if renovation condition = hardcover 4 = 1, if not = 0
+Aanalysis_Beijing_Housing$renovationCondition_new <- ifelse(Aanalysis_Beijing_Housing$renovationCondition == 4, 1, 0)
+# if bulding structure = steel( 5 ) and steel-concrete composite ( 6 ) =1 if not =0.
+Aanalysis_Beijing_Housing$buildingStructure_new <- ifelse(Aanalysis_Beijing_Housing$buildingStructure == 5 & 6, 1, 0)
+```
+
+```{r}
+Aanalysis_Beijing_Housing$lprice <- log(Aanalysis_Beijing_Housing$price)
+Aanalysis_Beijing_Housing$ltotalPrice <- log(Aanalysis_Beijing_Housing$totalPrice)
+```
+
+```{r}
+# Scatter plot between DO1(active days on market) and price.
+ggplot(data = Aanalysis_Beijing_Housing) + 
+  geom_point(mapping = aes(x = DOM, y = price))
+```
+
+```{r}
+#2 - Scatter plot between the square of the house and price.
+
+# Scatter plot
+ggplot(data = Aanalysis_Beijing_Housing) + 
+  geom_point(mapping = aes(x = square , y = ltotalPrice),color = "#DB9C1A" ) +
+  labs(title = "Square of the hours vs Price per Square", x = "square ",
+      y = "Total Price", caption = "Aanalysis_Beijing_Housing")
+
+cor(Aanalysis_Beijing_Housing$square, Aanalysis_Beijing_Housing$price)
+
+```
+
+```{r}
+ggplot(data = Aanalysis_Beijing_Housing) + 
+  geom_point(mapping = aes(x = kitchen , y = ltotalPrice),color = "#DB9C1A" ) +
+  labs(title = "Square of the hours vs Total Price", x = "square ",
+      y = "Total Price", caption = "Aanalysis_Beijing_Housing")
+```
+
+
+```{r}
+na.omit(Aanalysis_Beijing_Housing$bathRoom)
+```
+
+
+```{r}
+max(Aanalysis_Beijing_Housing$bathRoom, na.rm = TRUE)
+```
+
+```{r}
+# histogram
+#Price Overview
+ggplot(data = Aanalysis_Beijing_Housing) +
+  geom_histogram(mapping = aes(x = price))
+```
+
+```{r}
+Aanalysis_Beijing_Housing %>%
+  filter(BuildingType_new == "1" |
+           BuildingType_new == "0") %>%
+  ggplot(aes(BuildingType_new, fill = price)) +
+  geom_bar(position = "dodge",
+           alpha = 0.5) +
+  theme_bw()+
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())+
+  labs(title = "Building Type vs Price",
+       x = "BuildingType",
+       y = "Price")
+```
+
+
+```{r}
+#Summary Statistics for key variables 
+summary1 <- Aanalysis_Beijing_Housing %>%
+  select(price, BuildingType_new, renovationCondition_new, buildingStructure_new, square, livingRoom, bathRoom, kitchen) %>%
+  psych::describe(quant=c(.25,.75)) %>%
+  as_tibble(rownames="rowname")  %>%
+  print()
+```
+
+```{r}
+# Select stats for comparison with other solutions
+summary_comp <- summary1 %>%
+  select(var=rowname, min, q25=Q0.25, median, q75=Q0.75, max, mean, sd) %>%
+  print()
+```
+
+```{r}
+## question 4. section conduct an explanatory analysis of your data##
+
+#correlation between price and building Type 
+cor(Aanalysis_Beijing_Housing$price, Aanalysis_Beijing_Housing$BuildingType_new)
+cor(Aanalysis_Beijing_Housing$price, Aanalysis_Beijing_Housing$renovationCondition_new)
+# t-test for Building type and price 
+t.test(Aanalysis_Beijing_Housing$BuildingType_new, Aanalysis_Beijing_Housing$price) 
+# 
+```
+
+```{r}
+#question 6 of section conduct an explanatory analysis of your data#
+lm(price ~ BuildingType_new, data = Aanalysis_Beijing_Housing)
+myreg <- lm(ltotalPrice ~ BuildingType_new, data = Aanalysis_Beijing_Housing)
+modelsummary(myreg)
+ 
+```
+
+```{r}
+fit <- lm(ltotalPrice ~ BuildingType_new + renovationCondition_new + buildingStructure_new + square + livingRoom + bathRoom + kitchen, data=Aanalysis_Beijing_Housing)
+summary(fit)
+```
+
+
+
